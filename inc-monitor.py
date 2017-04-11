@@ -59,7 +59,7 @@ def announce(img):
     global twitter_DM
     global twitter
 
-    if twitter is None or img.getStatus() != DetectMultiFrame.DetectValue.Found:
+    if twitter is None or img.getStatus() != incimagedetect.DetectValue.Found:
         return None
     
     msg = "The incubator monitor has detected a gecko hatching.  Did I get it right?"
@@ -135,12 +135,12 @@ def process_image(f, history, write_output):
     global announced
     
     if ref is None:
-        ref = DetectMultiFrame.DetectFrame(f)
+        ref = incimagedetect.DetectFrame(f)
         print("New reference ", ref.getShortname())
         periodic_reset = 0
         return
 
-    img = DetectMultiFrame.DetectFrame(f, history, min_area, changeThreshold)
+    img = incimagedetect.DetectFrame(f, history, min_area, changeThreshold)
     img.compareToReference(ref, threshold)
     print(img.toString())
     periodic_reset = periodic_reset + 1    
@@ -150,21 +150,21 @@ def process_image(f, history, write_output):
     r = img.toDict()
     results['files'][img.getShortname()] = r
 
-    if img.getStatus() == DetectMultiFrame.DetectValue.Reset:
+    if img.getStatus() == incimagedetect.DetectValue.Reset:
         print("Resetting reference")
         ref = None
 
     # Periodically reset as (probably due to daylight) the image drifts over time.
     # Note: History has to be longer than reset_interval to work
     if periodic_reset > reset_interval and img is not None:
-        if img.getStatus() != DetectMultiFrame.DetectValue.Disruption:
+        if img.getStatus() != incimagedetect.DetectValue.Disruption:
             ref = None
             print("Periodic reset")        
 
     ## TODO improve, allow second and reset of announce
     if not announced and img is not None and len(history) >= announce_threshold:
         # todo update for multi-detection
-        if img.getStatus() == DetectMultiFrame.DetectValue.Found and len(img.getAllAreas()) == 1:
+        if img.getStatus() == incimagedetect.DetectValue.Found and len(img.getAllAreas()) == 1:
             allFound = True
             for dot in history[-announce_threshold:]:
                 if dot['Status'] != 'Found':
