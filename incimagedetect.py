@@ -140,9 +140,9 @@ class DetectFrame:
     
    def isDisruption(self):
 
-       #todo handle consecutive
+       #todo handle consecutive disruptions
        disrupt = (len(self.history) > 0 and
-                  len(self.getAllAreas()) >= len(self.history[-1]['Areas']) + self.disruption_threshold
+                  len(self.getAllAreas()) >= len(self.history[-1]['Areas']) + self.disruption_threshold)
 
        return disrupt
 
