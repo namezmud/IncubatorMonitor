@@ -42,7 +42,7 @@ results = {}
 results['files'] = {}
 
 if live_mode:
-    files = []
+    paths = []
 else:
     files = os.listdir(dir)
     files.sort()

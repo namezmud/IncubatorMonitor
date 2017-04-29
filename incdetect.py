@@ -143,7 +143,7 @@ class IncDetection():
 
         while True:
             for i in range(1,10):
-                filename = self.output + 'Incubator_'+ time.strftime('%m%d_%H%M%S')+ '.jpg'
+                filename = self.output_path + 'Incubator_'+ time.strftime('%m%d_%H%M%S')+ '.jpg'
                 camera.capture(filename)
                 img = self.process_image(filename)
 
@@ -159,5 +159,5 @@ class IncDetection():
                 sleep(9)
 
             #write results periodically as it will probably end in tears (i.e. ctrl-C)
-            write_results(results)
+            self.write_results()
             print('Updated results')
