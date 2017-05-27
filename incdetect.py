@@ -130,7 +130,15 @@ class IncDetection():
     def go_replay(self):
         
         for f in self.files:
-            img = self.process_image(f)
+            try:
+                (path, ext) = os.path.splitext(f)
+                if (os.path.isfile(f) and ext == ".jpg"):
+                    img = self.process_image(f)
+                else:
+                    print("reject", f, ext)
+            # catch exceptions that might likely specific to 1 file.
+            except (AttributeError, ValueError, TypeError, IndexError) as e:
+                print("Caught", e, "while processing", f)
 
         self.write_results()   
 
