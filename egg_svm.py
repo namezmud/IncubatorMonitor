@@ -12,10 +12,14 @@ class ML():
 ##     d = json.load(json_data)
 ##     print(d)
 
+    def _extract_features(self, x):
+        features = [x["error"], x["ellipse"][1][0], x["ellipse"][1][1], x["ellipse"][1][1]/x["ellipse"][1][0]] + x["median_ints"]
+        return features
+
     # With a trained SVM predict which are eggs.
     def predict(self, raw):
 
-        X = [[x["error"], x["ellipse"][1][0], x["ellipse"][1][1], x["ellipse"][1][1]/x["ellipse"][1][0]] for x in raw]
+        X = [self._extract_features(x) for x in raw]
         scaled = self.scaler.transform(X)
         pred = self.clf.predict(scaled)
         return pred
@@ -42,13 +46,16 @@ class ML():
 
         #extract feature vectors from the dictionary of classified data
         self.X_train = [[x["error"], x["ellipse"][1][0], x["ellipse"][1][1],
-                         x["ellipse"][1][1]/x["ellipse"][1][0]] for x in self.train]
+                         x["ellipse"][1][1]/x["ellipse"][1][0]] + x["median_ints"] for x in self.train]
+        if not np.isfinite(self.X_train).all():
+            print(" Bad X_train ")
+
         #extract classifications
         Y = [x['classification'] == 'EGG' for x in self.train]
         self.Y_train = np.array(Y).astype(int)
 
         self.X_test = [[x["error"], x["ellipse"][1][0], x["ellipse"][1][1],
-                        x["ellipse"][1][1]/x["ellipse"][1][0]] for x in self.test]
+                        x["ellipse"][1][1]/x["ellipse"][1][0]] + x["median_ints"] for x in self.test]
         Y = [x['classification'] == 'EGG' for x in self.test]
         self.Y_test = np.array(Y).astype(int)
 

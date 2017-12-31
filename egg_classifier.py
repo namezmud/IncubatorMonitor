@@ -1,10 +1,11 @@
-import EggDetect
+import eggcellent
 import math
 import numpy as np
 import cv2
 import json
 import re
 import os
+import imutils
 
 # help classifiy potential eggs as egg/not_an_egg to create training data.
 class EggClassifier():
@@ -20,7 +21,7 @@ class EggClassifier():
         self.size_margin = size_margin
         self.posn_margin = posn_margin
         #set low thresholds
-        self.Detector = EggDetect.EggDetect(max_egg_width = 70, min_egg_width = 12 , error_thresh = 150, min_contour_length = 50,
+        self.Detector = eggcellent.EggDetect(max_egg_width = 70, min_egg_width = 12 , error_thresh = 150, min_contour_length = 50,
                   edge_high_thresh = 160, edge_low_thresh = 60, ref_width = 4,  ref_blur = 11)
 
         self.regex = re.compile("(t|T|y|Y)")
@@ -75,6 +76,70 @@ class EggClassifier():
             print("Outside")
 
         return OK
+
+    def get_crop_padded(self, padded_img, ellipse, filename="", border=0):
+        length = max(ellipse[1])
+        center = ellipse[0]
+        x1 = int(center[1] - length + border)
+        y1 = int(center[0] - length + border)
+        x2 = int(center[1] + length + border)
+        y2 = int(center[0] + length + border)
+
+        rows, cols = padded_img.shape
+
+        if x1 < 0 or x2 > cols or y1 < 0 or y2 > rows:
+            print("too close to edge", x1, y1, x2, y2)
+            return 0
+
+        crop = padded_img[x1:x2, y1:y2]
+ #       print("X", y1, y2)
+        cv2.imshow("crop", crop)
+        if len(filename):
+ #           print("Write : ", filename)
+            cv2.imwrite(filename, crop)
+        return crop
+
+
+    def compute_medians(self, eggs, path=""):
+        pad = 1000
+        ff = np.array([range(3), range(3,6), range(6,9)], np.uint8)
+        file = ""
+        img = None
+
+        for egg in eggs:
+            if file != path+egg['file']:
+                file = path+egg['file']
+                img = cv2.imread(path+egg['file'], 0)
+
+                if img is None:
+                    print("did not find file", path+egg['file'])
+                    continue
+
+                print("Process ", path+egg['file'])
+                pimg = cv2.copyMakeBorder(img, pad, pad,pad,pad, cv2.BORDER_REPLICATE)
+
+            if img is not None:
+                self.crop = self.get_crop_padded(pimg, egg['ellipse'], "", pad)
+
+                feature_map = imutils.resize(ff, width=max(self.crop.shape))
+
+                crop_ellipse = ((len(self.crop)/2, len(self.crop)/2),
+                      (egg['ellipse'][1][0], egg['ellipse'][1][1]),
+                      egg['ellipse'][2])
+                cv2.ellipse(feature_map, crop_ellipse, (9,9,9),-1)
+                features = [ [] for _ in range(10)]
+                for x in range(self.crop.shape[0]):
+                    for y in range(self.crop.shape[1]):
+                        f = feature_map[x][y]
+                        v = self.crop[x][y]
+                        features[f].append(v)
+                egg['median_ints'] = [np.median(f) for f in features]
+            else:
+                print("did not find ", path+egg['file'])
+
+        return eggs
+
+
 
     def get_crop(self, img, ellipse, filename = ""):
         center = ellipse[0]

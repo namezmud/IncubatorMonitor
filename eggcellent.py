@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import math
 import os
 import egg_svm
+import imutils
 
 ## Train a Machine Learning system to detect eggs from an image.
 class EggDetect():
@@ -32,7 +33,7 @@ class EggDetect():
         self.svm = egg_svm.ML()
         self.trained = False
         self.break_contours = break_contours
-        self.break_min_length = 200
+        self.break_min_length = 160
         self.break_step_size = 50
         self.break_length = 120
 
@@ -130,6 +131,57 @@ class EggDetect():
         mean_err = np.mean(err) - np.min(err_image)
         return mean_err
 
+    def _get_crop(self, img, ellipse, pad=0):
+        pimg = cv2.copyMakeBorder(img, pad, pad, pad, pad, cv2.BORDER_REPLICATE)
+
+        length = max(ellipse[1])
+        center = ellipse[0]
+        x1 = int(center[1] - length + pad)
+        y1 = int(center[0] - length + pad)
+        x2 = int(center[1] + length + pad)
+        y2 = int(center[0] + length + pad)
+
+        rows, cols = pimg.shape
+
+        if x1 < 0 or x2 > cols or y1 < 0 or y2 > rows:
+            print("too close to edge", x1, y1, x2, y2)
+            return []
+
+        crop = pimg[x1:x2, y1:y2]
+ #       print("X", y1, y2)
+        cv2.imshow("padded", crop)
+        return crop
+
+    def _compute_medians(self, ellipse):
+        pad = 1000
+        ff = np.array([range(3), range(3,6), range(6,9)], np.uint8)
+        crop = self._get_crop(self.img, ellipse, pad)
+        file = ""
+
+        if not len(crop):
+            print("failed to get crop")
+            return 0*range(10)
+
+        feature_map = imutils.resize(ff, width=max(crop.shape))
+
+        crop_ellipse = ((len(crop)/2, len(crop)/2),
+              (ellipse[1][0], ellipse[1][1]),
+              ellipse[2])
+        cv2.ellipse(feature_map, crop_ellipse, (9,9,9),-1)
+        features = [ [] for _ in range(10)]
+        for x in range(crop.shape[0]):
+            for y in range(crop.shape[1]):
+                f = feature_map[x][y]
+                v = crop[x][y]
+                features[f].append(v)
+
+        medians = [np.median(f) for f in features]
+
+        #repalce any missing data with a middle value
+        medians = [127 if not np.isfinite(x) else x for x in medians]
+
+        return medians
+
     # Check for 1 contour if it could be an egg or not based simple criteria.
     # this is basic filtering of this that are clearly not eggs.
     #
@@ -180,8 +232,10 @@ class EggDetect():
                     if not too_close:
                         self.draw(img, fit_ellipse, c)
                         print("Found egg : ", fit_ellipse)
+                        meds = self._compute_medians(fit_ellipse)
                         egg_out = {"ellipse": fit_ellipse, "error" : error, "contour" :
-                                   c.tolist(), "file" : self.filename}
+                                   c.tolist(), "file":self.filename,
+                                   "median_ints":meds}
                         self.eggs.append(egg_out)
                         found = True
                         #input("press")
